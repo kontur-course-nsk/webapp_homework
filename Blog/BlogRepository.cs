@@ -25,16 +25,16 @@ namespace Blog
 
         public async Task<Post> GetPostAsync(string id, CancellationToken token)
         {
-            var filter = new BsonDocument("Id", $"{id}");
-            var filteredPosts = await posts.FindAsync(filter);
+            var filter = Builders<Post>.Filter.Eq(x => x.Id, id);
             try
             {
+                var filteredPosts = await posts.FindAsync(filter);
                 return filteredPosts.First();
             }
             catch
             {
                 throw new PostNotFoundException(id);
-            }
+            }           
         }
 
         public Task<PostsList> SearchPostsAsync(PostSearchInfo searchInfo, CancellationToken token)
@@ -49,8 +49,8 @@ namespace Blog
                 Title = createInfo.Title,
                 Text = createInfo.Text,
                 Tags = createInfo.Tags,
-                CreatedAt = createInfo.CreatedAt ?? DateTime.UtcNow                
-            };                        
+                CreatedAt = createInfo.CreatedAt ?? DateTime.UtcNow
+            };
             await posts.InsertOneAsync(post, cancellationToken: token);
             return post;
         }

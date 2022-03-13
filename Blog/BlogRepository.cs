@@ -2,11 +2,20 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Blog.Models;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace Blog
 {
     public sealed class BlogRepository : IBlogRepository
     {
+        public BlogRepository()
+        {
+            string connectionString = "mongodb://localhost:27017";
+            MongoClient client = new MongoClient(connectionString);
+            IMongoDatabase database = client.GetDatabase("BlogDB");
+        }
+
         public Task<Post> GetPostAsync(string id, CancellationToken token)
         {
             throw new NotImplementedException();

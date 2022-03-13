@@ -28,7 +28,7 @@ namespace Blog
             var filter = Builders<Post>.Filter.Eq(x => x.Id, id);
             try
             {
-                var filteredPosts = await posts.FindAsync(filter);
+                var filteredPosts = await posts.FindAsync(filter, cancellationToken: token);
                 return filteredPosts.First();
             }
             catch
@@ -60,9 +60,10 @@ namespace Blog
             throw new NotImplementedException();
         }
 
-        public Task DeletePostAsync(string id, CancellationToken token)
+        public async Task DeletePostAsync(string id, CancellationToken token)
         {
-            throw new NotImplementedException();
+            var filter = Builders<Post>.Filter.Eq(x => x.Id, id);
+            await posts.DeleteOneAsync(filter, cancellationToken: token);
         }
 
         public Task CreateCommentAsync(string postId, CommentCreateInfo createInfo, CancellationToken token)

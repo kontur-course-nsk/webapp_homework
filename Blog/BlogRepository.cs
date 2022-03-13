@@ -4,21 +4,37 @@ using System.Threading.Tasks;
 using Blog.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Linq;
+using Blog.Exceptions;
 
 namespace Blog
 {
     public sealed class BlogRepository : IBlogRepository
     {
+        private readonly IMongoCollection<Post> posts;
+        private readonly IMongoCollection<Comment> comments;
+
         public BlogRepository()
         {
             string connectionString = "mongodb://localhost:27017";
-            MongoClient client = new MongoClient(connectionString);
-            IMongoDatabase database = client.GetDatabase("BlogDB");
+            var client = new MongoClient(connectionString);
+            var database = client.GetDatabase("BlogDB");
+            posts = database.GetCollection<Post>("Posts");            //  {DateTime.UtcNow}
+            comments = database.GetCollection<Comment>("Comments");
         }
 
-        public Task<Post> GetPostAsync(string id, CancellationToken token)
+        public async Task<Post> GetPostAsync(string id, CancellationToken token)
         {
-            throw new NotImplementedException();
+            var filter = new BsonDocument("Id", $"{id}");
+            var filteredPosts = await posts.FindAsync(filter);
+            try
+            {
+                return filteredPosts.First();
+            }
+            catch
+            {
+                throw new PostNotFoundException(id);
+            }
         }
 
         public Task<PostsList> SearchPostsAsync(PostSearchInfo searchInfo, CancellationToken token)
@@ -26,9 +42,17 @@ namespace Blog
             throw new NotImplementedException();
         }
 
-        public Task<Post> CreatePostAsync(PostCreateInfo createInfo, CancellationToken token)
+        public async Task<Post> CreatePostAsync(PostCreateInfo createInfo, CancellationToken token)
         {
-            throw new NotImplementedException();
+            var post = new Post() {
+                Id = Guid.NewGuid().ToString(),
+                Title = createInfo.Title,
+                Text = createInfo.Text,
+                Tags = createInfo.Tags,
+                CreatedAt = createInfo.CreatedAt ?? DateTime.UtcNow                
+            };                        
+            await posts.InsertOneAsync(post, cancellationToken: token);
+            return post;
         }
 
         public Task UpdatePostAsync(string id, PostUpdateInfo updateInfo, CancellationToken token)

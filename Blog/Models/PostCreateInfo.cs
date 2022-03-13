@@ -1,6 +1,7 @@
 ﻿using System;
+using MongoDB.Bson;
 
-namespace Blog.Models
+namespace Blog.Models 
 {
     public sealed class PostCreateInfo
     {

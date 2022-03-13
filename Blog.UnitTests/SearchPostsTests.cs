@@ -82,6 +82,8 @@ namespace Blog.UnitTests
             var postsList = this.blogRepository
                 .SearchPostsAsync(new PostSearchInfo { Tag = "tag1", Limit = 1, Offset = 1 }, default).Result;
 
+            
+
             postsList.Posts.Should().BeEquivalentTo(new[] { post2 });
             postsList.Total.Should().Be(3);
         }

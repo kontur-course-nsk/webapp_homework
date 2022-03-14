@@ -35,7 +35,7 @@ namespace Blog.UnitTests
             updatedPost.Title.Should().Be(post.Title);
             updatedPost.Text.Should().Be(updateInfo.Text);
             updatedPost.Tags.Should().BeEquivalentTo(post.Tags);
-            //updatedPost.CreatedAt.Should().Be(post.CreatedAt);
+            updatedPost.CreatedAt.Should().BeWithin(TimeSpan.FromSeconds(1)).Before(post.CreatedAt);
         }
 
         [Test]
@@ -61,7 +61,7 @@ namespace Blog.UnitTests
             updatedPost.Title.Should().Be(updateInfo.Title);
             updatedPost.Text.Should().Be(updateInfo.Text);
             updatedPost.Tags.Should().BeEquivalentTo(updateInfo.Tags);
-            //updatedPost.CreatedAt.Should().Be(post.CreatedAt);
+            updatedPost.CreatedAt.Should().BeWithin(TimeSpan.FromSeconds(1)).Before(post.CreatedAt);
         }
 
         [Test]

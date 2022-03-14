@@ -2,7 +2,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Blog.Models;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Linq;
 using Blog.Exceptions;
@@ -89,16 +88,19 @@ namespace Blog
         {
             var post = await GetPostAsync(id, token);
             var filter = Builders<Post>.Filter.Eq(p => p.Id, id);
+
             if (updateInfo.Title != null)
             {
                 var update = Builders<Post>.Update.Set(p => p.Title, updateInfo.Title);
                 await posts.FindOneAndUpdateAsync(filter, update, cancellationToken: token);
             }
+
             if (updateInfo.Text != null)
             {
                 var update = Builders<Post>.Update.Set(p => p.Text, updateInfo.Text);
                 await posts.FindOneAndUpdateAsync(filter, update, cancellationToken: token);
             }
+
             if (updateInfo.Tags != null)
             {
                 var update = Builders<Post>.Update.Set(p => p.Tags, updateInfo.Tags);
@@ -121,6 +123,7 @@ namespace Blog
                 Text = createInfo.Text,
                 CreatedAt = DateTime.UtcNow
             };
+
             var filter = Builders<Post>.Filter.Eq(p => p.Id, postId);
             var update = post.Comments is null ?
                 Builders<Post>.Update.Set(p => p.Comments, new Comment[1] { comment }) :

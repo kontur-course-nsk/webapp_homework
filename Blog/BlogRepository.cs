@@ -18,11 +18,18 @@ namespace Blog
             string connectionString = "mongodb://localhost:27017";
             var client = new MongoClient(connectionString);
             var database = client.GetDatabase("BlogDB");
-            posts = database.GetCollection<Post>("Posts");            //  $"Posts {DateTime.UtcNow}" for unique db
+            posts = database.GetCollection<Post>("Posts");
         }
 
         public async Task<Post> GetPostAsync(string id, CancellationToken token)
         {
+            // Если сделать id += "spoil", то происходит PostNotFoundException,
+            // однако поймать исключение тестом я не смог.
+
+            // При проверке actualPost.Should().BeEquivalentTo(expectedPost);
+            // выявляется разлчие в пятом знаке количества секунд поля CreatedAt 
+            // Можно исправить тест на проверку отдельных полей
+
             var filter = Builders<Post>.Filter.Eq(x => x.Id, id);
             try
             {

@@ -3,7 +3,7 @@
 namespace Blog.Models
 {
     public sealed class Post
-    {
+    { 
         /// <summary>
         /// Идентификатор поста. Генерируется автоматически при создании с помощью Guid.NewGuid()
         /// </summary>

@@ -23,13 +23,13 @@ namespace Blog
 
         public async Task<Post> GetPostAsync(string id, CancellationToken token)
         {
-            // Если сделать id += "spoil", то происходит PostNotFoundException,
-            // значит логика метода вроде бы верная?
-            // Однако поймать исключение тестом я не смог.
+            // Whith id += "spoil" an PostNotFoundException is being thrown,
+            // so it seems to work correct.
+            // But unfortunately I didn't found a proper way to fulfill the test.
 
-            // При проверке actualPost.Should().BeEquivalentTo(expectedPost);
-            // выявляется разлчие в пятом знаке количества секунд поля CreatedAt 
-            // Можно исправить тест на проверку отдельных полей
+            // While checking actualPost.Should().BeEquivalentTo(expectedPost)
+            // the difference in 5th digit of second count of the CreatedAt field occurs.
+            // Can be fixed by making a test comparing each field instead of entire posts.
 
             var filter = Builders<Post>.Filter.Eq(x => x.Id, id);
             try

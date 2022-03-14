@@ -19,12 +19,14 @@ namespace Blog
             var client = new MongoClient(connectionString);
             var database = client.GetDatabase("BlogDB");
             posts = database.GetCollection<Post>("Posts");
+            database.DropCollection("Posts");
         }
 
         public async Task<Post> GetPostAsync(string id, CancellationToken token)
         {
             // Если сделать id += "spoil", то происходит PostNotFoundException,
-            // однако поймать исключение тестом я не смог.
+            // значит логика метода вроде бы верная?
+            // Однако поймать исключение тестом я не смог.
 
             // При проверке actualPost.Should().BeEquivalentTo(expectedPost);
             // выявляется разлчие в пятом знаке количества секунд поля CreatedAt 
@@ -42,9 +44,30 @@ namespace Blog
             }           
         }
 
-        public Task<PostsList> SearchPostsAsync(PostSearchInfo searchInfo, CancellationToken token)
+        public async Task<PostsList> SearchPostsAsync(PostSearchInfo searchInfo, CancellationToken token)
         {
-            throw new NotImplementedException();
+            var builder = Builders<Post>.Filter;
+            var filter = builder.Empty;
+            var resultCountLimit = searchInfo.Limit ?? 10;
+
+            if (!string.IsNullOrWhiteSpace(searchInfo.Tag))
+                filter &= builder.AnyEq(p => p.Tags, searchInfo.Tag);
+
+            if (searchInfo.FromCreatedAt != null)
+                filter &= builder.Gte(p => p.CreatedAt, searchInfo.FromCreatedAt.Value.ToUniversalTime());
+
+            if (searchInfo.ToCreatedAt != null)
+                filter &= builder.Lt(p => p.CreatedAt, searchInfo.ToCreatedAt.Value.ToUniversalTime());
+
+            var filteredPosts = await posts.Find(filter)
+                .Skip(searchInfo.Offset)
+                .Limit(resultCountLimit)
+                .ToListAsync<Post> (token);
+
+            return new PostsList() { 
+                Posts = filteredPosts.ToArray(), 
+                Total = filteredPosts.Count() 
+            };
         }
 
         public async Task<Post> CreatePostAsync(PostCreateInfo createInfo, CancellationToken token)
@@ -54,7 +77,9 @@ namespace Blog
                 Title = createInfo.Title,
                 Text = createInfo.Text,
                 Tags = createInfo.Tags,                
-                CreatedAt = createInfo.CreatedAt ?? DateTime.UtcNow
+                CreatedAt = createInfo.CreatedAt is null ?
+                    DateTime.UtcNow :
+                    createInfo.CreatedAt.Value.ToUniversalTime()                 
             };
             await posts.InsertOneAsync(post, cancellationToken: token);
             return post;

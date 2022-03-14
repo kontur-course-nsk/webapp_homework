@@ -2,7 +2,7 @@
 
 namespace Blog.Models
 {
-    public sealed class PostSearchInfo
+    public sealed class PostSearchInfo 
     {
         public string Tag { get; set; }
 

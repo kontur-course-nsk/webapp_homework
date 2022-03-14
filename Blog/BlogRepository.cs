@@ -12,15 +12,13 @@ namespace Blog
     public sealed class BlogRepository : IBlogRepository
     {
         private readonly IMongoCollection<Post> posts;
-        private readonly IMongoCollection<Comment> comments;
 
         public BlogRepository()
         {
             string connectionString = "mongodb://localhost:27017";
             var client = new MongoClient(connectionString);
             var database = client.GetDatabase("BlogDB");
-            posts = database.GetCollection<Post>("Posts");            //  {DateTime.UtcNow}
-            comments = database.GetCollection<Comment>("Comments");
+            posts = database.GetCollection<Post>("Posts");            //  $"Posts {DateTime.UtcNow}" for unique db
         }
 
         public async Task<Post> GetPostAsync(string id, CancellationToken token)
@@ -48,16 +46,32 @@ namespace Blog
                 Id = Guid.NewGuid().ToString(),
                 Title = createInfo.Title,
                 Text = createInfo.Text,
-                Tags = createInfo.Tags,
+                Tags = createInfo.Tags,                
                 CreatedAt = createInfo.CreatedAt ?? DateTime.UtcNow
             };
             await posts.InsertOneAsync(post, cancellationToken: token);
             return post;
         }
 
-        public Task UpdatePostAsync(string id, PostUpdateInfo updateInfo, CancellationToken token)
+        public async Task UpdatePostAsync(string id, PostUpdateInfo updateInfo, CancellationToken token)
         {
-            throw new NotImplementedException();
+            var post = await GetPostAsync(id, token);
+            var filter = Builders<Post>.Filter.Eq(p => p.Id, id);
+            if (updateInfo.Title != null)
+            {
+                var update = Builders<Post>.Update.Set(p => p.Title, updateInfo.Title);
+                await posts.FindOneAndUpdateAsync(filter, update, cancellationToken: token);
+            }
+            if (updateInfo.Text != null)
+            {
+                var update = Builders<Post>.Update.Set(p => p.Text, updateInfo.Text);
+                await posts.FindOneAndUpdateAsync(filter, update, cancellationToken: token);
+            }
+            if (updateInfo.Tags != null)
+            {
+                var update = Builders<Post>.Update.Set(p => p.Tags, updateInfo.Tags);
+                await posts.FindOneAndUpdateAsync(filter, update, cancellationToken: token);
+            }
         }
 
         public async Task DeletePostAsync(string id, CancellationToken token)
@@ -66,9 +80,20 @@ namespace Blog
             await posts.DeleteOneAsync(filter, cancellationToken: token);
         }
 
-        public Task CreateCommentAsync(string postId, CommentCreateInfo createInfo, CancellationToken token)
+        public async Task CreateCommentAsync(string postId, CommentCreateInfo createInfo, CancellationToken token)
         {
-            throw new NotImplementedException();
+            var post = await GetPostAsync(postId, token);            
+            var comment = new Comment()
+            {
+                Username = createInfo.Username,
+                Text = createInfo.Text,
+                CreatedAt = DateTime.UtcNow
+            };
+            var filter = Builders<Post>.Filter.Eq(p => p.Id, postId);
+            var update = post.Comments is null ?
+                Builders<Post>.Update.Set(p => p.Comments, new Comment[1] { comment }) :
+                Builders<Post>.Update.Push<Comment>(p => p.Comments, comment);
+            await posts.FindOneAndUpdateAsync(filter, update, cancellationToken: token);           
         }
     }
 }

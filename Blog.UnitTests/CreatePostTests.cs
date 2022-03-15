@@ -13,7 +13,8 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
-            this.blogRepository = new BlogRepository();
+            var posts = new Connection().Collection;
+            this.blogRepository = new BlogRepository(posts);
         }
 
         [Test]

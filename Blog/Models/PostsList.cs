@@ -7,6 +7,6 @@
         /// <summary>
         /// Количество постов, подходящее под поисковый запрос без учёта Limit и Offset.
         /// </summary>
-        public int Total { get; set; }
+        public long Total { get; set; }
     }
 }

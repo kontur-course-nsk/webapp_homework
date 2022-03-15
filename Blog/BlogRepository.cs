@@ -12,26 +12,23 @@ namespace Blog
 {
     public sealed class BlogRepository : IBlogRepository
     {
-        private IMongoCollection<Post> posts;
+        private IMongoCollection<Post> collection;
 
-        public BlogRepository()
+        public BlogRepository(IMongoCollection<Post> collection)
         {
-            string connectionString = "mongodb://localhost:27017";
-            MongoClient client = new MongoClient(connectionString);
-            IMongoDatabase database = client.GetDatabase("blog");
-            database.DropCollection("posts");
-            database.CreateCollection("posts");
-            posts = database.GetCollection<Post>("posts");
+            this.collection = collection;
         }
 
-        public Task<Post> GetPostAsync(string id, CancellationToken token)
+        public async Task<Post> GetPostAsync(string id, CancellationToken token)
         {
-            var post = posts.Find(post => post.Id == id).FirstOrDefault(token);
+            var result = await collection.FindAsync(post => post.Id == id, cancellationToken: token);
 
-            if (post == null)
+            var post = await result.FirstOrDefaultAsync();
+
+            if (post is null)
                 throw new PostNotFoundException(id);
 
-            return Task.FromResult(post);
+            return post;
         }
 
         public async Task<PostsList> SearchPostsAsync(PostSearchInfo searchInfo, CancellationToken token)
@@ -43,7 +40,7 @@ namespace Blog
 
             var builder = Builders<Post>.Filter;
 
-            var filter = builder.All(post => post.Tags, new[] { searchInfo.Tag });
+            var filter = builder.AnyEq(post => post.Tags, searchInfo.Tag);
 
             if (searchInfo.FromCreatedAt != null)
                 filter &= builder.Gte(post => post.CreatedAt, searchInfo.FromCreatedAt);
@@ -54,33 +51,18 @@ namespace Blog
             var limit = searchInfo.Limit ?? 10;
             var offset = searchInfo.Offset ?? 0;
 
-            var list = new List<Post>(limit);
-            var totalCount = 0;
+            var searchResult = collection.Find(filter);
+            var count = await searchResult.CountDocumentsAsync(token);
+            var posts = await searchResult.Skip(offset).Limit(limit).ToListAsync(token);
 
-            using (var foundPosts = await posts.FindAsync(filter, null, token))
-            {
-                while (await foundPosts.MoveNextAsync())
-                {
-                    var people = foundPosts.Current;
-                    foreach (var doc in people)
-                    {
-                        if (totalCount >= offset && totalCount <= offset + limit - 1)
-                        {
-                            lock (list)
-                            {
-                                list.Add(doc);
-                            }
-                        }
-                        totalCount++;
-                    }
-                }
-            }
-            return new PostsList { Posts = list.ToArray(), Total = totalCount };
+            return new PostsList { Posts = posts.ToArray(), Total = count };
         }
-        public Task<Post> CreatePostAsync(PostCreateInfo createInfo, CancellationToken token)
+
+        public async Task<Post> CreatePostAsync(PostCreateInfo createInfo, CancellationToken token)
         {
-            var dateTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss.fff");
-            var dateTimeUtc = DateTime.Parse(dateTime).ToUniversalTime();
+            // Convert date to ISO-8601 date.
+            var time = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
+            var timeUtc = DateTime.Parse(time).ToUniversalTime();
 
             var post = new Post
             {
@@ -88,69 +70,67 @@ namespace Blog
                 Title = createInfo.Title,
                 Text = createInfo.Text,
                 Tags = createInfo.Tags,
-                CreatedAt = createInfo.CreatedAt != null 
-                    ? createInfo.CreatedAt.Value.ToUniversalTime() : dateTimeUtc,
+                CreatedAt = createInfo.CreatedAt is null ?
+                    timeUtc : createInfo.CreatedAt.Value.ToUniversalTime(),
             };
-            posts.InsertOneAsync(post, null, token);
+            await collection.InsertOneAsync(post, cancellationToken: token);
 
-            return Task.FromResult(post);
+            return post;
         }
 
-        public Task UpdatePostAsync(string id, PostUpdateInfo updateInfo, CancellationToken token)
+        public async Task UpdatePostAsync(string id, PostUpdateInfo updateInfo, CancellationToken token)
         {
-            if(updateInfo == null)
+            if(updateInfo is null)
                 throw new ArgumentNullException(nameof(updateInfo));
 
-            var update = Builders<Post>.Update.Set(post => post.Id, id);
+            var post = await GetPostAsync(id, token);
 
-            if (updateInfo.Title != null)
-                update = update.Set(post => post.Title, updateInfo.Title);
+            if (post is null)
+                throw new PostNotFoundException(id);
+
+            var update = updateInfo.Title is null ? 
+                Builders<Post>.Update.Set(p => p.Title, post.Title) :
+                Builders<Post>.Update.Set(p => p.Title, updateInfo.Title);
 
             if (updateInfo.Text != null)
-                update = update.Set(post => post.Text, updateInfo.Text);
+                update = update.Set(p => p.Text, updateInfo.Text);
 
             if (updateInfo.Tags != null)
-                update = update.Set(post => post.Tags, updateInfo.Tags);
+                update = update.Set(p => p.Tags, updateInfo.Tags);
 
-            var updateResult = posts.UpdateOneAsync(post => post.Id == id, update, null, token).Result;
-
-            if (updateResult.MatchedCount == 0)
-                throw new PostNotFoundException(id);
-
-            return Task.CompletedTask;
+            var updateResult = await collection.UpdateOneAsync(p => p.Id == id, update, cancellationToken: token);
         }
 
-        public Task DeletePostAsync(string id, CancellationToken token)
+        public async Task DeletePostAsync(string id, CancellationToken token)
         {
-            var post = posts.FindOneAndDeleteAsync(post => post.Id == id, null, token);
+            var deleteResult = await collection.DeleteOneAsync(post => post.Id == id, cancellationToken: token);
 
-            if (post.Result == null)
+            if (deleteResult.DeletedCount == 0)
                 throw new PostNotFoundException(id);
-
-            return Task.CompletedTask;
         }
 
-        public Task CreateCommentAsync(string postId, CommentCreateInfo createInfo, CancellationToken token)
+        public async Task CreateCommentAsync(string postId, CommentCreateInfo createInfo, CancellationToken token)
         {
             if (createInfo == null)
                 throw new ArgumentNullException(nameof(createInfo));
 
-            var comment = new Comment { Username = createInfo.Username, Text = createInfo.Text, CreatedAt = DateTime.UtcNow };
+            var post = await GetPostAsync(postId, token);
 
-            var pushDefinition = Builders<Post>.Update.PushEach(post => post.Comments, new Comment[] { comment }); 
-            
-            var updateResult = posts.FindOneAndUpdateAsync(post => post.Id == postId && post.Comments != null, pushDefinition, null, token).Result;
-
-            if (updateResult == null)
-            {
-                var addDefinition = Builders<Post>.Update.Set(post => post.Comments, new Comment[] { comment });
-                updateResult = posts.FindOneAndUpdateAsync(post => post.Id == postId, addDefinition, null, token).Result; ;
-            }
-
-            if (updateResult == null)
+            if (post is null)
                 throw new PostNotFoundException(postId);
 
-            return Task.CompletedTask;
+            var comment = new Comment 
+            { 
+                Username = createInfo.Username, 
+                Text = createInfo.Text, 
+                CreatedAt = DateTime.UtcNow 
+            };
+
+            var updateDefinition = post.Comments is null ?
+                Builders<Post>.Update.Set(p => p.Comments, new Comment[] { comment }) :
+                Builders<Post>.Update.Push(p => p.Comments, comment);
+            
+            await collection.UpdateOneAsync(p => p.Id == postId, updateDefinition, cancellationToken: token);
         }
     }
 }

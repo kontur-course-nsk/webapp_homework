@@ -13,7 +13,9 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
-            this.blogRepository = new BlogRepository();
+            var posts = new Connection().Collection;
+            posts.Database.DropCollection("posts");
+            this.blogRepository = new BlogRepository(posts);
         }
 
         [Test]

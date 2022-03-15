@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Blog.Exceptions;
 using Blog.Models;
 using FluentAssertions;
@@ -15,8 +16,9 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
-            this.firstBlogRepository = new BlogRepository();
-            this.secondBlogRepository = new BlogRepository();
+            var posts = new Connection().Collection;
+            this.firstBlogRepository = new BlogRepository(posts);
+            this.secondBlogRepository = new BlogRepository(posts);
         }
 
         [Test]
@@ -38,9 +40,10 @@ namespace Blog.UnitTests
         [Test]
         public void ThrowPostNotFoundException_WhenPostNotFound()
         {
-            Action action = () => this.firstBlogRepository.GetPostAsync(Guid.NewGuid().ToString(), default);
+            Func<Task> action = async () =>
+                await this.firstBlogRepository.GetPostAsync(Guid.NewGuid().ToString(), default);
 
-            action.Should().Throw<PostNotFoundException>();
+            action.Should().ThrowAsync<PostNotFoundException>();
         }
     }
 }

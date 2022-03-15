@@ -14,7 +14,9 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
-            this.blogRepository = new BlogRepository();
+            var posts = new Connection().Collection; 
+            posts.Database.DropCollection("posts");
+            this.blogRepository = new BlogRepository(posts);
         }
 
         [Test]
@@ -81,8 +83,6 @@ namespace Blog.UnitTests
 
             var postsList = this.blogRepository
                 .SearchPostsAsync(new PostSearchInfo { Tag = "tag1", Limit = 1, Offset = 1 }, default).Result;
-
-            
 
             postsList.Posts.Should().BeEquivalentTo(new[] { post2 });
             postsList.Total.Should().Be(3);

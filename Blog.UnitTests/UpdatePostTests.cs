@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Blog.Exceptions;
 using Blog.Models;
 using FluentAssertions;
@@ -67,10 +68,10 @@ namespace Blog.UnitTests
         [Test]
         public void ThrowPostNotFoundException_WhenPostNotFound()
         {
-            Action action = () =>
-                this.blogRepository.UpdatePostAsync(Guid.NewGuid().ToString(), new PostUpdateInfo(), default);
+            Func<Task> action = async () =>
+                await this.blogRepository.UpdatePostAsync(Guid.NewGuid().ToString(), new PostUpdateInfo(), default);
 
-            action.Should().Throw<PostNotFoundException>();
+            action.Should().ThrowAsync<PostNotFoundException>();
         }
     }
 }

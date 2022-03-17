@@ -68,8 +68,9 @@ namespace Blog.UnitTests
         [Test]
         public void ThrowPostNotFoundException_WhenPostNotFound()
         {
+            var updateInfo = new PostUpdateInfo { Title = "другой заголовок" };
             Func<Task> action = async () =>
-                await this.blogRepository.UpdatePostAsync(Guid.NewGuid().ToString(), new PostUpdateInfo(), default);
+                await this.blogRepository.UpdatePostAsync(Guid.NewGuid().ToString(), updateInfo, default);
 
             action.Should().ThrowAsync<PostNotFoundException>();
         }

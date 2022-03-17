@@ -14,6 +14,7 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
+            new BlogRepository().Posts.Database.DropCollection("posts");
             this.blogRepository = new BlogRepository();
         }
 

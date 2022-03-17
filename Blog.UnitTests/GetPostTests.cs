@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Blog.Exceptions;
 using Blog.Models;
 using FluentAssertions;
@@ -15,6 +16,7 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
+            new BlogRepository().Posts.Database.DropCollection("posts");
             this.firstBlogRepository = new BlogRepository();
             this.secondBlogRepository = new BlogRepository();
         }
@@ -26,7 +28,7 @@ namespace Blog.UnitTests
             {
                 Title = "Спортивное питание",
                 Text = "текст",
-                Tags = new[] { "food", "sport" },
+                Tags = new[] {"food", "sport"},
             };
             var expected = this.firstBlogRepository.CreatePostAsync(createInfo, default).Result;
 
@@ -36,11 +38,12 @@ namespace Blog.UnitTests
         }
 
         [Test]
-        public void ThrowPostNotFoundException_WhenPostNotFound()
+        public async Task ThrowPostNotFoundException_WhenPostNotFound()
         {
-            Action action = () => this.firstBlogRepository.GetPostAsync(Guid.NewGuid().ToString(), default);
+            Func<Task> action = async () => await this.firstBlogRepository
+                .GetPostAsync(Guid.NewGuid().ToString(), default);
 
-            action.Should().Throw<PostNotFoundException>();
+            await action.Should().ThrowAsync<PostNotFoundException>();
         }
     }
 }

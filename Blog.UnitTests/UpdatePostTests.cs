@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Blog.Exceptions;
 using Blog.Models;
 using FluentAssertions;
@@ -14,6 +15,7 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
+            new BlogRepository().Posts.Database.DropCollection("posts");
             this.blogRepository = new BlogRepository();
         }
 
@@ -24,10 +26,10 @@ namespace Blog.UnitTests
             {
                 Title = "Спортивное питание",
                 Text = "текст",
-                Tags = new[] { "food", "sport" },
+                Tags = new[] {"food", "sport"},
             };
             var post = this.blogRepository.CreatePostAsync(createInfo, default).Result;
-            var updateInfo = new PostUpdateInfo { Text = "другой текст" };
+            var updateInfo = new PostUpdateInfo {Text = "другой текст"};
 
             this.blogRepository.UpdatePostAsync(post.Id, updateInfo, default).Wait();
 
@@ -45,14 +47,14 @@ namespace Blog.UnitTests
             {
                 Title = "Спортивное питание",
                 Text = "текст",
-                Tags = new[] { "food", "sport" },
+                Tags = new[] {"food", "sport"},
             };
             var post = this.blogRepository.CreatePostAsync(createInfo, default).Result;
             var updateInfo = new PostUpdateInfo
             {
                 Title = "другой заголовок",
                 Text = "другой текст",
-                Tags = new[] { "otherTag" },
+                Tags = new[] {"otherTag"},
             };
 
             this.blogRepository.UpdatePostAsync(post.Id, updateInfo, default).Wait();
@@ -65,12 +67,12 @@ namespace Blog.UnitTests
         }
 
         [Test]
-        public void ThrowPostNotFoundException_WhenPostNotFound()
+        public async Task ThrowPostNotFoundException_WhenPostNotFound()
         {
-            Action action = () =>
-                this.blogRepository.UpdatePostAsync(Guid.NewGuid().ToString(), new PostUpdateInfo(), default);
+            Func<Task> action = async () => await this.blogRepository
+                .UpdatePostAsync(Guid.NewGuid().ToString(), new PostUpdateInfo(), default);
 
-            action.Should().Throw<PostNotFoundException>();
+            await action.Should().ThrowAsync<PostNotFoundException>();
         }
     }
 }

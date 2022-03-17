@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Blog.Exceptions;
 using Blog.Models;
 using FluentAssertions;
@@ -14,26 +15,30 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
+            new BlogRepository().Posts.Database.DropCollection("posts");
             this.blogRepository = new BlogRepository();
         }
 
         [Test]
-        public void ThrowPostNotFoundException_WhenGetDeletedPost()
+        public async Task ThrowPostNotFoundException_WhenGetDeletedPost()
         {
             var post = this.blogRepository.CreatePostAsync(new PostCreateInfo(), default).Result;
 
             this.blogRepository.DeletePostAsync(post.Id, default).Wait();
 
-            Action action = () => this.blogRepository.GetPostAsync(post.Id, default);
-            action.Should().Throw<PostNotFoundException>();
+            Func<Task> action = async () => await this.blogRepository
+                .GetPostAsync(post.Id, default);
+
+            await action.Should().ThrowAsync<PostNotFoundException>();
         }
 
         [Test]
-        public void ThrowPostNotFoundException_WhenPostNotFound()
+        public async Task ThrowPostNotFoundException_WhenPostNotFound()
         {
-            Action action = () => this.blogRepository.DeletePostAsync(Guid.NewGuid().ToString(), default);
+            Func<Task> action = async () => await this.blogRepository
+                .DeletePostAsync(Guid.NewGuid().ToString(), default);
 
-            action.Should().Throw<PostNotFoundException>();
+            await action.Should().ThrowAsync<PostNotFoundException>();
         }
     }
 }

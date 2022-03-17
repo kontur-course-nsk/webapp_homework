@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading.Tasks;
+using Blog.Exceptions;
 using Blog.Models;
 using FluentAssertions;
 using NUnit.Framework;
@@ -13,6 +15,7 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
+            new BlogRepository().Posts.Database.DropCollection("posts");
             this.blogRepository = new BlogRepository();
         }
 
@@ -20,7 +23,7 @@ namespace Blog.UnitTests
         public void GotPostWithComment_WhenCommentCreated()
         {
             var post = this.blogRepository.CreatePostAsync(new PostCreateInfo(), default).Result;
-            var commentCreateInfo = new CommentCreateInfo { Username = "user", Text = "Текст комментария" };
+            var commentCreateInfo = new CommentCreateInfo {Username = "user", Text = "Текст комментария"};
 
             this.blogRepository.CreateCommentAsync(post.Id, commentCreateInfo, default).Wait();
 
@@ -29,6 +32,16 @@ namespace Blog.UnitTests
             updatedPost.Comments[0].Username.Should().Be(commentCreateInfo.Username);
             updatedPost.Comments[0].Text.Should().Be(commentCreateInfo.Text);
             updatedPost.Comments[0].CreatedAt.Should().BeWithin(TimeSpan.FromSeconds(1)).Before(DateTime.UtcNow);
+        }
+
+        [Test]
+        public async Task ThrowPostNotFoundException_WhenPostNotFound()
+        {
+            var commentCreateInfo = new CommentCreateInfo();
+            Func<Task> action = async () => await this.blogRepository
+                .CreateCommentAsync(Guid.NewGuid().ToString(), commentCreateInfo, default);
+
+            await action.Should().ThrowAsync<PostNotFoundException>();
         }
     }
 }

@@ -13,6 +13,7 @@ namespace Blog.UnitTests
         [SetUp]
         public void SetUp()
         {
+            new BlogRepository().Posts.Database.DropCollection("posts");
             this.blogRepository = new BlogRepository();
         }
 
@@ -23,7 +24,7 @@ namespace Blog.UnitTests
             {
                 Title = "Спортивное питание",
                 Text = "текст",
-                Tags = new[] { "food", "sport" },
+                Tags = new[] {"food", "sport"},
             };
 
             var post = this.blogRepository.CreatePostAsync(createInfo, default).Result;

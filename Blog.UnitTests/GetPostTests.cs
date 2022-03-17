@@ -33,7 +33,11 @@ namespace Blog.UnitTests
 
             var actual = this.secondBlogRepository.GetPostAsync(expected.Id, default).Result;
 
-            actual.Should().BeEquivalentTo(expected);
+            actual.Id.Should().Be(expected.Id);
+            actual.Title.Should().Be(expected.Title);
+            actual.Text.Should().Be(expected.Text);
+            actual.Tags.Should().BeEquivalentTo(expected.Tags);
+            actual.CreatedAt.Should().BeWithin(TimeSpan.FromMilliseconds(100)).Before(expected.CreatedAt);
         }
 
         [Test]
